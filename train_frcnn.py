@@ -21,7 +21,7 @@ sys.setrecursionlimit(40000)
 
 parser = OptionParser()
 
-parser.add_option("-p", "--path", dest="train_path", default = '/home/yuanxue/faster-rcnn.pytorch-pytorch-1.0/data/VOCdevkit2007/',help="Path to training data.")
+parser.add_option("-p", "--path", dest="train_path", help="Path to the Pascal VOC root or simple-parser annotation file.")
 parser.add_option("-o", "--parser", dest="parser", help="Parser to use. One of simple or pascal_voc",
 				default="pascal_voc")
 parser.add_option("-n", "--num_rois", type="int", dest="num_rois", help="Number of RoIs to process at once.", default=32)
@@ -39,8 +39,8 @@ parser.add_option("--input_weight_path", default ='./model/model_frcnn.hdf5', de
 
 (options, args) = parser.parse_args()
 
-if not options.train_path:   # if filename is not given
-	parser.error('Error: path to training data must be specified. Pass --path to command line')
+if not options.train_path:
+	parser.error('Error: training data path is required. Pass --path /path/to/VOCdevkit2007/ or use --parser simple.')
 
 if options.parser == 'pascal_voc':
 	from keras_frcnn.pascal_voc_parser import get_data
@@ -113,10 +113,11 @@ num_imgs = len(train_imgs)
 print(f'Num val samples {len(val_imgs)}')
 
 
-data_gen_train = data_generators.get_anchor_gt(train_imgs, classes_count, C, nn.get_img_output_length, K.common.image_dim_ordering(), mode='train')
-data_gen_val = data_generators.get_anchor_gt(val_imgs, classes_count, C, nn.get_img_output_length,K.common.image_dim_ordering(), mode='val')
+dim_ordering = 'tf' if K.image_data_format() == 'channels_last' else 'th'
+data_gen_train = data_generators.get_anchor_gt(train_imgs, classes_count, C, nn.get_img_output_length, dim_ordering, mode='train')
+data_gen_val = data_generators.get_anchor_gt(val_imgs, classes_count, C, nn.get_img_output_length, dim_ordering, mode='val')
 
-if K.common.image_dim_ordering() == 'th':
+if K.image_data_format() == 'channels_first':
 	input_shape_img = (3, None, None)
 else:
 	input_shape_img = (None, None, 3)
@@ -190,7 +191,7 @@ for epoch_num in range(num_epochs):
 
 		P_rpn = model_rpn.predict_on_batch(X)
 
-		R = roi_helpers.rpn_to_roi(P_rpn[0], P_rpn[1], C, K.common.image_dim_ordering(), use_regr=True, overlap_thresh=0.7, max_boxes=300)
+		R = roi_helpers.rpn_to_roi(P_rpn[0], P_rpn[1], C, dim_ordering, use_regr=True, overlap_thresh=0.7, max_boxes=300)
 		# note: calc_iou converts from (x1,y1,x2,y2) to (x,y,w,h) format
 		X2, Y1, Y2, IouS = roi_helpers.calc_iou(R, img_data, C, class_mapping)
 

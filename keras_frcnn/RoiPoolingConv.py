@@ -1,4 +1,4 @@
-from keras.engine.topology import Layer
+from keras.layers import Layer
 import keras.backend as K
 
 if K.backend() == 'tensorflow':
@@ -26,7 +26,7 @@ class RoiPoolingConv(Layer):
     '''
     def __init__(self, pool_size, num_rois, **kwargs):
 
-        self.dim_ordering = K.common.image_dim_ordering()
+        self.dim_ordering = 'tf' if K.image_data_format() == 'channels_last' else 'th'
         assert self.dim_ordering in {'tf', 'th'}, 'dim_ordering must be in {tf, th}'
 
         self.pool_size = pool_size

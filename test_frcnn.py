@@ -11,16 +11,15 @@ from keras_frcnn import config
 from keras import backend as K
 from keras.layers import Input
 from keras.models import Model
-from keras.backend.tensorflow_backend import set_session
 from keras_frcnn import roi_helpers
 
 sys.setrecursionlimit(40000)
 
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
 config.log_device_placement = False
-sess = tf.Session(config=config)
-set_session(sess)
+sess = tf.compat.v1.Session(config=config)
+K.set_session(sess)
 
 parser = OptionParser()
 
@@ -100,6 +99,7 @@ def get_real_coordinates(ratio, x1, y1, x2, y2):
 	return (real_x1, real_y1, real_x2 ,real_y2)
 if __name__ == '__main__':
 	class_mapping = C.class_mapping
+	dim_ordering = 'tf' if K.image_data_format() == 'channels_last' else 'th'
 
 	if 'bg' not in class_mapping:
 		class_mapping['bg'] = len(class_mapping)
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 	elif C.network == 'vgg':
 		num_features = 512
 
-	if K.common.image_dim_ordering() == 'th':
+	if K.image_data_format() == 'channels_first':
 		input_shape_img = (3, None, None)
 		input_shape_features = (num_features, None, None)
 	else:
@@ -165,14 +165,14 @@ if __name__ == '__main__':
 
 		X, ratio = format_img(img, C)
 
-		if K.common.image_dim_ordering() == 'tf':
+		if K.image_data_format() == 'channels_last':
 			X = np.transpose(X, (0, 2, 3, 1))
 
 		# get the feature maps and output from the RPN
 		[Y1, Y2, F] = model_rpn.predict(X)
 
 
-		R = roi_helpers.rpn_to_roi(Y1, Y2, C, K.common.image_dim_ordering(), overlap_thresh=0.5)
+		R = roi_helpers.rpn_to_roi(Y1, Y2, C, dim_ordering, overlap_thresh=0.5)
 
 		# convert from (x1,y1,x2,y2) to (x,y,w,h)
 		R[:, 2] -= R[:, 0]
@@ -252,4 +252,3 @@ if __name__ == '__main__':
 
 
 		cv2.imwrite('./results_imgs-fp-mappen-test/{}.png'.format(os.path.splitext(str(img_name))[0]),img)
-
